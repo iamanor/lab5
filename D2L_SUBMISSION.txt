@@ -1,0 +1,18 @@
+Optional Extension: Go Beyond - Option 1, Side panel chart
+Track: AI
+
+AI Usage Statement
+Tool: OpenAI Codex (Codex desktop app).
+Extension date: November 1, 2026.
+Codex helped write and revise the extension, run browser checks, and draft this explanation. I chose the side panel option and requested simpler code and comments.
+Additional disclosure: Codex also assisted with the earlier required map to fix an undefined feature property error to show the county on October 31, 2026; AI assistance was not limited to this extension.
+
+Extension prompt excerpts:
+1. "Can we change it so when a user clicks an area, show its chart in a fixed panel beside the map, instead of in a tooltip. The chart should stay until the user clicks another area"
+2. "Fixed side panel: click a tract to keep its chart visible"
+
+One thing that did not work at first, and the fix:
+The original hover behavior did not keep the chart visible after the pointer left the tract. The chart was moved into a permanent panel, selectTract was connected to the click event, and the tooltip-close chart cleanup was removed. Browser checks confirmed that moving away leaves the chart in place and clicking another tract replaces it. A tract with no residents shows a message instead of a chart.
+
+How the new code works:
+The onEachFeature function adds a click event to each tract layer and calls selectTract with that layer. The selectedLayer variable remembers the chosen tract, while selectTract reads its feature.properties, updates the panel, and calls makeChart to draw the seven population counts. Moving the mouse away only resets the hover style of an unselected tract, so the selected outline and chart stay until another tract is clicked.

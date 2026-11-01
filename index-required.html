@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 5 | Chicago Population, 2020</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/billboard.js@4.1.1/dist/billboard.min.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/billboard.js@4.1.1/dist/billboard.pkgd.min.js"></script>
+    <script src="data.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 100%;
+        }
+        .map-title, .legend {
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            color: #24343b;
+        }
+        .map-title h1 {
+            font-size: 18px;
+            margin: 0 0 4px;
+        }
+        .map-title p {
+            margin: 3px 0;
+            font-size: 12px;
+        }
+        .legend {
+            line-height: 21px;
+            font-size: 12px;
+        }
+        .legend strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .legend i {
+            display: inline-block;
+            width: 18px;
+            height: 16px;
+            margin-right: 8px;
+            vertical-align: middle;
+            border: 1px solid #aaa;
+        }
+        .tract-tooltip {
+            white-space: normal;
+            padding: 10px;
+            min-width: min(330px, calc(100vw - 54px));
+        }
+        .tract-tooltip h2 {
+            font-size: 15px;
+            margin: 0 0 3px;
+        }
+        .tract-tooltip p {
+            margin: 4px 0;
+            font-size: 12px;
+        }
+        .tract-tooltip .chart-note {
+            color: #555;
+            max-width: 320px;
+            font-size: 11px;
+        }
+        .bb text {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+        }
+        @media (max-width: 480px) {
+            .map-title {
+                max-width: 235px;
+                padding: 8px;
+            }
+            .map-title h1 {
+                font-size: 15px;
+            }
+            .legend {
+                padding: 7px 9px;
+            }
+            .tract-tooltip::before {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map" aria-label="Chicago census tracts by Hispanic population percentage in 2020"></div>
+    <script>
+        // 1. Create the map and add the background map.
+        var map = L.map('map', {
+            center: [41.85, -87.7],
+            zoom: 10,
+            fadeAnimation: false
+        });
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ | Data: supplied Chicago tracts, 2020',
+            maxNativeZoom: 16,
+            maxZoom: 18,
+            minZoom: 5
+        }).addTo(map);
+
+        var chart = null;
+
+        function formatNumber(value) {
+            return value.toLocaleString('en-US');
+        }
+
+        // 2. Choose a map color using the percentage of Hispanic residents.
+        function getColor(percent) {
+            if (percent === null) {
+                return '#bdbdbd';
+            }
+            if (percent >= 80) {
+                return '#08519c';
+            }
+            if (percent >= 60) {
+                return '#3182bd';
+            }
+            if (percent >= 40) {
+                return '#6baed6';
+            }
+            if (percent >= 20) {
+                return '#bdd7e7';
+            }
+            return '#eff3ff';
+        }
+
+        function style(feature) {
+            return {
+                fillColor: getColor(feature.properties.HispanicPct),
+                weight: 0.7,
+                opacity: 1,
+                color: '#637681',
+                fillOpacity: 0.85
+            };
+        }
+
+        // 3. Make a horizontal bar chart from one tract's population counts.
+        function makeChart(tract, chartBox) {
+            if (chart) {
+                chart.destroy();
+            }
+
+            var residentCounts = [
+                tract.White,
+                tract.Black,
+                tract.Hispanic,
+                tract.AmericanIn,
+                tract.Asian,
+                tract.Other,
+                tract.Multiracia
+            ];
+            var groupNames = [
+                'White', 'Black', 'Hispanic', 'American Indian',
+                'Asian', 'Other', 'Multiracial'
+            ];
+            var barColors = [
+                '#0072b2', '#e69f00', '#009e73', '#cc79a7',
+                '#56b4e9', '#d55e00', '#777777'
+            ];
+            var largestGroup = Math.max(
+                tract.White, tract.Black, tract.Hispanic, tract.AmericanIn,
+                tract.Asian, tract.Other, tract.Multiracia
+            );
+
+            chart = bb.generate({
+                bindto: chartBox,
+                size: {
+                    width: Math.min(330, window.innerWidth - 54),
+                    height: 260
+                },
+                data: {
+                    columns: [['Residents'].concat(residentCounts)],
+                    type: 'bar',
+                    labels: { format: formatNumber },
+                    color: function (defaultColor, bar) {
+                        return barColors[bar.index] || defaultColor;
+                    }
+                },
+                axis: {
+                    rotated: true,
+                    x: {
+                        type: 'category',
+                        categories: groupNames,
+                        tick: { multiline: false }
+                    },
+                    y: {
+                        min: 0,
+                        // Leave room at the end of each bar for its number.
+                        max: Math.ceil(largestGroup * 1.3),
+                        padding: { bottom: 0, top: 0 },
+                        tick: {
+                            count: 3,
+                            format: function (value) {
+                                return formatNumber(Math.round(value));
+                            }
+                        },
+                        label: { text: 'Residents (2020)', position: 'outer-center' }
+                    }
+                },
+                padding: { left: 108, right: 35, bottom: 50 },
+                legend: { show: false },
+                tooltip: { show: false },
+                transition: { duration: 0 },
+                interaction: { enabled: false }
+            });
+        }
+
+        // 4. Highlight the tract under the mouse and build its information bubble.
+        function highlightFeature(event) {
+            var tractOnMap = event.target;
+            tractOnMap.setStyle({
+                weight: 3,
+                color: '#253c4b',
+                fillOpacity: 0.65
+            });
+            tractOnMap.bringToFront();
+        }
+
+        function resetHighlight(event) {
+            geojson.resetStyle(event.target);
+        }
+
+        function tooltipContent(layer) {
+            var tract = layer.feature.properties;
+            var content = L.DomUtil.create('div');
+            var heading = L.DomUtil.create('h2', '', content);
+            heading.textContent = tract.Community;
+            var location = L.DomUtil.create('p', '', content);
+            location.textContent = tract.County + ' · ' + tract.TractName;
+            var percentText = 'N/A';
+            if (tract.HispanicPct !== null) {
+                percentText = tract.HispanicPct.toFixed(1) + '%';
+            }
+            var summary = L.DomUtil.create('p', '', content);
+            summary.textContent = 'Population: ' + formatNumber(tract.Total2020) + ' | Hispanic: ' + percentText;
+            if (tract.Total2020 === 0) {
+                var empty = L.DomUtil.create('p', '', content);
+                empty.textContent = 'No residents recorded; percentage is not defined.';
+            } else {
+                L.DomUtil.create('div', 'ethnicity-chart', content);
+            }
+            var note = L.DomUtil.create('p', 'chart-note', content);
+            note.textContent = 'Race and ethnicity counts from the supplied 2020 data. GEOID: ' + tract.GEOID;
+            return content;
+        }
+
+        function onEachFeature(feature, layer) {
+            var bubbleDirection = 'auto';
+            var followMouse = true;
+            if (window.innerWidth <= 480) {
+                bubbleDirection = 'center';
+                followMouse = false;
+            }
+
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight
+            });
+            layer.bindTooltip(tooltipContent(layer), {
+                className: 'tract-tooltip',
+                direction: bubbleDirection,
+                opacity: 1,
+                sticky: followMouse
+            });
+        }
+
+        // 5. Add the tracts. Draw each chart after its bubble is on the page.
+        var geojson = L.geoJson(data, {
+            style: style,
+            onEachFeature: onEachFeature
+        }).addTo(map);
+        geojson.on('tooltipopen', function (event) {
+            var bubble = event.tooltip.getElement();
+            var chartBox = bubble.querySelector('.ethnicity-chart');
+            var tract = event.layer.feature.properties;
+            if (chartBox) {
+                makeChart(tract, chartBox);
+            }
+            if (window.innerWidth <= 480) {
+                event.tooltip.setLatLng(map.getCenter());
+            }
+            event.tooltip.update();
+        });
+        geojson.on('tooltipclose', function () {
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+        });
+        map.fitBounds(geojson.getBounds(), { padding: [20, 20], animate: false });
+
+        // 6. Add the map title and the color key (legend).
+        var title = L.control({ position: 'topright' });
+        title.onAdd = function () {
+            var div = L.DomUtil.create('div', 'map-title');
+            div.innerHTML = '<h1>Chicago population, 2020</h1><p>Hispanic share by census tract</p>' +
+                '<p>Hover or tap a tract for race and ethnicity counts.</p>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        title.addTo(map);
+
+        var legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function () {
+            var breaks = [0, 20, 40, 60, 80];
+            var labels = ['0–<20%', '20–<40%', '40–<60%', '60–<80%', '80–100%'];
+            var div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = '<strong>Hispanic population<br>Percent of tract residents, 2020</strong>';
+            for (var i = 0; i < breaks.length; i++) {
+                var row = L.DomUtil.create('div', '', div);
+                var colorBox = L.DomUtil.create('i', '', row);
+                colorBox.style.backgroundColor = getColor(breaks[i]);
+                row.appendChild(document.createTextNode(labels[i]));
+            }
+            div.innerHTML += '<div><i style="background:#bdbdbd"></i>No residents (N/A)</div>';
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        legend.addTo(map);
+    </script>
+</body>
+</html>
