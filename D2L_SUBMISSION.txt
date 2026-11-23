@@ -2,10 +2,10 @@ Optional Extension: Go Beyond - Option 1, Side panel chart
 Track: AI
 
 AI Usage Statement
-Tool: OpenAI Codex (Codex desktop app).
+Tool: OpenAI  (ChatGPT desktop app).
 Extension date: November 1, 2026.
-Codex helped write and revise the extension, run browser checks, and draft this explanation. I chose the side panel option and requested simpler code and comments.
-Additional disclosure: Codex also assisted with the earlier required map to fix an undefined feature property error to show the county on October 31, 2026; AI assistance was not limited to this extension.
+ChatGPT guided me to revise the extension, run browser checks.I chose the side panel option and requested simpler code and comments.
+Additional disclosure: ChatGPT also assisted with the earlier required map to fix an undefined feature property error to show the county on October 31, 2026; AI assistance was not limited to this extension.
 
 Extension prompt excerpts:
 1. "Can we change it so when a user clicks an area, show its chart in a fixed panel beside the map, instead of in a tooltip. The chart should stay until the user clicks another area"
